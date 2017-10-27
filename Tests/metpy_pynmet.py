@@ -4,6 +4,7 @@ from matplotlib.colors import BoundaryNorm
 import matplotlib.pyplot as plt
 import numpy as np
 import pynmet
+from cartopy.feature import NaturalEarthFeature
 
 from metpy.gridding.gridding_functions import (interpolate, remove_nan_observations,
                                                remove_repeat_coordinates)
@@ -14,10 +15,12 @@ def basic_map(proj):
     view = fig.add_axes([0, 0, 1, 1], projection=proj)
     view.set_extent([-76, -34, -37, 7])
     view.add_feature(cartopy.feature.NaturalEarthFeature(category='cultural',
-                                                         name='admin_1_states_provinces_lakes',
+                                                         name='admin_1_states_provinces',
                                                          scale='50m', facecolor='none'))
+    coast = NaturalEarthFeature(category='physical', scale='50m',
+                            facecolor='none', name='coastline')
     view.add_feature(cartopy.feature.OCEAN)
-    view.add_feature(cartopy.feature.COASTLINE)
+    view.add_feature(coast, edgecolor='black')
     view.add_feature(cartopy.feature.BORDERS, linestyle=':')
     return view
 
@@ -47,7 +50,7 @@ cmap = plt.get_cmap('Blues')
 sites = pynmet.inmet.sites.index
 #sites = ['A803']
 
-lon, lat, temp = station_test_data('Precipitacao', sites, '2017-02', 'm')
+lon, lat, temp = station_test_data('Precipitacao', sites, '2017-09', 'm')
 lon = np.array(lon)
 lat = np.array(lat)
 temp = np.array(temp)
@@ -62,15 +65,13 @@ proj_points = to_proj.transform_points(from_proj, lon, lat)
 x, y = proj_points[:, 0], proj_points[:, 1]
 
 
-
 x, y, temp = remove_nan_observations(x, y, temp)
 x, y, temp = remove_repeat_coordinates(x, y, temp)
 
 
-
 gx, gy, img = interpolate(x, y, temp, interp_type='cressman',
-                          minimum_neighbors=1, search_radius=600000, hres=25000)
+                          minimum_neighbors=4, search_radius=500000, hres=30000)
 img = np.ma.masked_where(np.isnan(img), img)
 view = basic_map(to_proj)
 mmb = view.pcolormesh(gx, gy, img, cmap=cmap)
-plt.colorbar(mmb, shrink=.4, pad=0)
+plt.colorbar(mmb, shrink=.8, pad=0)
