@@ -8,9 +8,9 @@ def cli():
 
 
 @cli.command()
+@click.argument('code')
 @click.argument('output', default='./')
 @click.option('--local', default=False)
-@click.argument('code')
 def download(code, local, output):
     if output[-1] is '/':
         out = output + code + '.csv'

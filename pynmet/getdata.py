@@ -17,7 +17,7 @@ header = ['Temperatura', 'Temperatura_max', 'Temperatura_min', 'Umidade',
           'Pressao_max', 'Pressao_min', 'Vento_velocidade', 'Vento_direcao',
           'Vento_rajada', 'Radiacao', 'Precipitacao']
 
-rep_vals = ['\r', '\n', '\t', '////', '///', '//']
+rep_str = ['\r', '\n', '\t', '////', '///', '//']
 
 pynmet_path = os.path.dirname(os.path.abspath(__file__))
 filepath = os.path.join(pynmet_path, 'data', 'estacoes.csv')
@@ -25,7 +25,7 @@ sites = pd.read_csv(filepath, index_col='codigo',
                     dtype={'codigo': str, 'alt': int})
 
 
-def _parse(a, b):
+def parse(a, b):
         return dt.datetime.strptime(''.join(map(str, [a, b])), '%d/%m/%Y%H')
 
 
@@ -42,10 +42,11 @@ def get_from_web(code, dia_i, dia_f):
                     'dtafim': dia_f, 'aleaNum': encoded}
     session.post(est, post_request)
     data_str = session.get(pg_data).content.decode()
-    data_str = [data_str.replace(x, '') for x in rep_vals]
+    for string in rep_str:
+        data_str = data_str.replace(string, '')
     data_str = data_str.replace('<br>', '\n').replace('/,', ',')
-    dados = pd.read_csv(StringIO(data_str), date_parser=_parse, index_col=0,
-                        usecols=list(range(1, 20), parse_dates=[[1, 2]]))
+    dados = pd.read_csv(StringIO(data_str), date_parser=parse, index_col=0,
+                        usecols=list(range(1, 20)), parse_dates=[[0, 1]])
     dados.columns = header
     dados = dados.tz_localize('UTC')
     return dados
