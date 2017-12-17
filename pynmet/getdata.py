@@ -17,10 +17,16 @@ header = ['Temperatura', 'Temperatura_max', 'Temperatura_min', 'Umidade',
           'Pressao_max', 'Pressao_min', 'Vento_velocidade', 'Vento_direcao',
           'Vento_rajada', 'Radiacao', 'Precipitacao']
 
+rep_vals = ['\r', '\n', '\t', '////', '///', '//']
+
 pynmet_path = os.path.dirname(os.path.abspath(__file__))
 filepath = os.path.join(pynmet_path, 'data', 'estacoes.csv')
 sites = pd.read_csv(filepath, index_col='codigo',
                     dtype={'codigo': str, 'alt': int})
+
+
+def _parse(a, b):
+        return dt.datetime.strptime(''.join(map(str, [a, b])), '%d/%m/%Y%H')
 
 
 def get_from_web(code, dia_i, dia_f):
@@ -36,14 +42,10 @@ def get_from_web(code, dia_i, dia_f):
                     'dtafim': dia_f, 'aleaNum': encoded}
     session.post(est, post_request)
     data_str = session.get(pg_data).content.decode()
-    data_str = data_str.replace('\r', '').replace('\n', '').replace('\t', '')
-    data_str = data_str.replace('<br>', '\n').replace('////', '')
-    data_str = data_str.replace('///', '').replace('//', '').replace('/,', ',')
-    dados = pd.read_csv(StringIO(data_str))
-    dados[['data', 'hora']] = dados[['data', 'hora']].astype(str)
-    data = pd.to_datetime(dados['data'] + dados['hora'], format="%d/%m/%Y%H")
-    dados.set_index(data, inplace=True)
-    dados = dados.drop([' codigo_estacao', 'data', 'hora'], axis=1)
+    data_str = [data_str.replace(x, '') for x in rep_vals]
+    data_str = data_str.replace('<br>', '\n').replace('/,', ',')
+    dados = pd.read_csv(StringIO(data_str), date_parser=_parse, index_col=0,
+                        usecols=list(range(1, 20), parse_dates=[[1, 2]]))
     dados.columns = header
     dados = dados.tz_localize('UTC')
     return dados
@@ -58,7 +60,8 @@ def get_from_ldb(code, db, local=False):
     if local is True:
         try:
             dados = pd.read_hdf(db, code)
-        except:
+        except RuntimeWarning:
+            print('Não há dados locais para a estação {}').format(code)
             dados = pd.DataFrame(columns=header)
         return dados
 
