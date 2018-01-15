@@ -6,6 +6,7 @@ import datetime as dt
 from bs4 import BeautifulSoup
 from io import StringIO
 from pathlib import Path
+from requests.adapters import HTTPAdapter
 
 
 pg_form = 'http://www.inmet.gov.br/sonabra/pg_dspDadosCodigo_sim.php?'
@@ -34,13 +35,14 @@ def get_from_web(code, dia_i, dia_f):
     decoded = base64.b64encode(code.encode('ascii')).decode()
     est = pg_form + decoded
     session = requests.session()
+    session.mount('http://www.inmet.gov.br/', HTTPAdapter(max_retries=5))
     page = session.get(est)
     soup = BeautifulSoup(page.content, 'lxml')
     base64Str = str(soup.findAll('img')[0])[-11:-3]
     encoded = base64.b64decode(base64Str.encode('ascii')).decode()
     post_request = {'aleaValue': base64Str, 'dtaini': dia_i,
                     'dtafim': dia_f, 'aleaNum': encoded}
-    session.post(est, post_request)
+    session.post(est, post_request, timeout=1)
     data_str = session.get(pg_data).content.decode()
     for string in rep_str:
         data_str = data_str.replace(string, '')
